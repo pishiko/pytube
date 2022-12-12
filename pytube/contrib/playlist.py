@@ -301,7 +301,7 @@ class Playlist(Sequence):
         """
         return DeferredGeneratorList(self.url_generator())
 
-    def videos_generator(self,urls:DeferredGeneratorList|None=None):
+    def videos_generator(self,urls=None):
         if not urls:
             _urls = self.video_urls
         else:
