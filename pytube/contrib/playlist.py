@@ -103,7 +103,7 @@ class Playlist(Sequence):
         return self.ytcfg['INNERTUBE_API_KEY']
 
     def _paginate(
-        self, until_watch_id: Optional[str] = None
+        self, until_watch_id: Optional[str] = None, extractor=None, html=None
     ) -> Iterable[List[str]]:
         """Parse the video links from the page source, yields the /watch?v=
         part from video link
@@ -114,8 +114,17 @@ class Playlist(Sequence):
         :rtype: Iterable[List[str]]
         :returns: Iterable of lists of YouTube watch ids
         """
-        videos_urls, continuation = self._extract_videos(
-            json.dumps(extract.initial_data(self.html))
+        if not extractor:
+            _extractor = self._extract_videos
+        else:
+            _extractor = extractor
+        if not html:
+            _html = self.html
+        else:
+            _html = html
+
+        videos_urls, continuation = _extractor(
+            json.dumps(extract.initial_data(_html))
         )
         if until_watch_id:
             try:
@@ -273,12 +282,12 @@ class Playlist(Sequence):
         for page in self._paginate(until_watch_id=video_id):
             yield from (self._video_url(watch_path) for watch_path in page)
 
-    def url_generator(self):
+    def url_generator(self,extractor=None,html=None):
         """Generator that yields video URLs.
 
         :Yields: Video URLs
         """
-        for page in self._paginate():
+        for page in self._paginate(extractor=extractor,html=html):
             for video in page:
                 yield self._video_url(video)
 
@@ -292,8 +301,12 @@ class Playlist(Sequence):
         """
         return DeferredGeneratorList(self.url_generator())
 
-    def videos_generator(self):
-        for url in self.video_urls:
+    def videos_generator(self,urls=None):
+        if not urls:
+            _urls = self.video_urls
+        else:
+            _urls = urls
+        for url in _urls:
             yield YouTube(url)
 
     @property
@@ -304,7 +317,7 @@ class Playlist(Sequence):
         :returns: List of YouTube
         """
         return DeferredGeneratorList(self.videos_generator())
-
+    
     def __getitem__(self, i: Union[slice, int]) -> Union[str, List[str]]:
         return self.video_urls[i]
 
